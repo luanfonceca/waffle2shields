@@ -1,31 +1,24 @@
 from flask import Flask, redirect, request
-from urllib2 import urlopen
-from re import findall
 
-app = Flask(__name__)
+from service import Waffle, Landscape
 
 GITHUB_URL = ('https://github.com/luanfonceca/'
               'waffle2shields#waffleio-to-shieldsio')
-WAFFLE_URL = 'https://badge.waffle.io/{user}/{repo}.png?label={label}'
-SHIELDS_URL = ('http://img.shields.io/badge/'
-               '{subject}-{status}-{color}.svg?style={style}')
+
+app = Flask(__name__)
 
 
-@app.route("/")
-def parse_badges():
+@app.route("/<string:service_slug>/")
+def parse_badges(service_slug):
     data = request.args.to_dict()
-
-    if not data:
+    service = None
+    if service_slug == 'waffle':
+        service = Waffle(**data)
+    elif service_slug == 'landscape':
+        service = Landscape(**data)
+    else:
         return redirect(GITHUB_URL)
-
-    html = urlopen(WAFFLE_URL.format(**data)).read()
-    shields_data = {
-        'subject': data.get('label', 'Waffle').title(),
-        'status': findall(r'<text.*?>(.*?)</text>', html)[-1],
-        'color': findall(r'<rect.*? fill="#?([^\s^"]+)', html)[2],
-        'style': data.get('style')
-    }
-    return redirect(SHIELDS_URL.format(**shields_data))
+    return redirect(service.get_shields_url())
 
 
 if __name__ == "__main__":
